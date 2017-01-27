@@ -14,9 +14,11 @@ function Add-FileToAppLockerPolicy {
         $AppLockerFileInfo = Get-AppLockerFileInformation -Directory $PathToDirectory -FileType Exe -Recurse
     }
 
+    # This is not creating Publisher rule types as expected.
     $AppLockerPolicy = New-AppLockerPolicy -FileInformation $AppLockerFileInfo -User $AffectedUsers -RuleType Publisher,Hash -RuleNamePrefix "PS_Generated_$env:USERNAME" -Optimize
 
-    $AppLockerPolicyDistinguishedName = Get-ADObject -Filter {Name -like "{C8ABB15B-DA60-49F9-ACC5-B7C6204A9F7C}"} | select -ExpandProperty DistinguishedName
+    $AppLockerPolicyGUID = "{F5D1AC24-EF4A-41BB-9D8C-81404B9869C7}"
+    $AppLockerPolicyDistinguishedName = Get-ADObject -Filter {Name -like $AppLockerPolicyGUID} | select -ExpandProperty DistinguishedName
     $DCHostName = Get-ADDomainController | select -ExpandProperty HostName
 
     Set-AppLockerPolicy -PolicyObject $AppLockerPolicy -Ldap "LDAP://$DCHostName/$AppLockerPolicyDistinguishedName" -Merge

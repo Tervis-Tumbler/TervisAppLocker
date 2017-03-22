@@ -36,3 +36,63 @@ function Invoke-GPUpdateOnComputersWithLocalAdmins {
         Invoke-GPUpdate -Computer $Computer.Name -Force -Verbose
     }
 }
+
+function Get-AppLockerEvents {
+    param (
+    $LogServer = "INF-AppLockLog"
+    )
+    
+    $AppLockerEvents = Get-WinEvent -ComputerName $LogServer -LogName ForwardedEvents | where Id -NE 111
+    
+    foreach ($Event in $AppLockerEvents) {
+        [xml]$EventXML = $Event.toXML()
+        $ComputerName = $EventXML.Event.System.Computer
+        $EventFilePath = $EventXML.Event.UserData.RuleAndFileData.FilePath
+        $EventFileHash = $EventXML.Event.UserData.RuleAndFileData.FileHash
+        $EventPublisher = $EventXML.Event.UserData.RuleAndFileData.FQBN.Split("\")[0]
+
+        [PSCustomObject][Ordered]@{
+            ComputerName = $ComputerName
+            EventPublisher = $EventPublisher
+            EventFileHash = $EventFileHash
+            EventFilePath = $EventFilePath
+        }
+    }        
+}
+
+
+
+<#
+
+[XML]$AppLockerPolicyXML = Get-Content C:\bwilkinson.xml
+[xml]$AppLockerPolicyXML = Get-AppLockerFileInformation -Directory 'C:\Program Files\Microsoft Office' -FileType Exe -Recurse  | New-AppLockerPolicy -RuleType Publisher,Hash -RuleNamePrefix Test_ -User Everyone -Xml -Optimize
+$FileHashes = $AppLockerPolicyXML.AppLockerPolicy.RuleCollection.FileHashRule.Conditions.FileHashCondition.FileHash | % {$_.clone()}
+$FileHashRule = $AppLockerPolicyXML.AppLockerPolicy.RuleCollection.FileHashRule | select -First 1
+$AppLockerPolicyXML.AppLockerPolicy.RuleCollection.RemoveAll()
+$FileHashRule.Conditions.FileHashCondition.FileHash.RemoveAll()
+#$FileHashRule.Conditions.FileHashCondition.FileHash.Remove()
+$FileHashRule.Conditions.FileHashCondition.RemoveChild(
+    $($FileHashRule.Conditions.FileHashCondition.ChildNodes|
+    select -First 1)
+)
+
+$FileHashRule.Conditions.FileHashCondition 
+ForEach ($FileHash in $FileHashes) {
+    #$FileHashRule.Conditions.FileHashCondition.AppendChild($FileHash) | Out-Null
+    $($FileHashRule.Conditions.ChildNodes | select -First 1).AppendChild($FileHash) | Out-Null
+}
+
+
+
+
+$AppLockerPolicyXML.AppLockerPolicy.RuleCollection.FileHashRule.Conditions.FileHashCondition.FileHash | measure
+$AppLockerPolicyXML.AppLockerPolicy.RuleCollection.FileHashRule | measure
+
+
+
+$FileHashRule.Conditions.FileHashCondition.FileHash.RemoveChild()
+
+$FileHashes |select -First 10 | % { $_.outerxml}
+$FileHashRule.Conditions.FileHashCondition.OuterXml
+
+#>

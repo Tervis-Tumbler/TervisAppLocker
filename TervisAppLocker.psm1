@@ -46,12 +46,16 @@ function Get-AppLockerEvents {
     
     foreach ($Event in $AppLockerEvents) {
         [xml]$EventXML = $Event.toXML()
+        [DateTime]$TimeCreated = $EventXML.Event.System.TimeCreated.SystemTime
+        $RecordId = $Event.Event.System.EventRecordID
         $ComputerName = $EventXML.Event.System.Computer
         $EventFilePath = $EventXML.Event.UserData.RuleAndFileData.FilePath
         $EventFileHash = $EventXML.Event.UserData.RuleAndFileData.FileHash
         $EventPublisher = $EventXML.Event.UserData.RuleAndFileData.FQBN.Split("\")[0]
 
         [PSCustomObject][Ordered]@{
+            TimeCreated = $TimeCreated
+            RecordId = $RecordId
             ComputerName = $ComputerName
             EventPublisher = $EventPublisher
             EventFileHash = $EventFileHash

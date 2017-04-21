@@ -25,6 +25,44 @@ function Add-FileToAppLockerPolicy {
 
 }
 
+function Add-TervisAppLockerPolicyFromXMLFile {
+    param (
+        [Parameter(Mandatory)]$Path
+    )
+    $AppLockerPolicyGUID = "{F5D1AC24-EF4A-41BB-9D8C-81404B9869C7}"
+    $AppLockerPolicyDistinguishedName = Get-ADObject -Filter {Name -like $AppLockerPolicyGUID} | select -ExpandProperty DistinguishedName
+    $DCHostName = Get-ADDomainController | select -ExpandProperty HostName
+    Set-AppLockerPolicy -XmlPolicy $Path -Ldap "LDAP://$DCHostName/$AppLockerPolicyDistinguishedName" -Merge -Verbose
+}
+
+function New-TervisAppLockerPolicyXMLFileFromDirectory {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]$ExePath,
+        [Parameter(Mandatory)]$XmlDestination,
+        [Parameter(Mandatory)]$XmlFileRootName,
+        $User = "Everyone"
+    )
+    if (-not (Test-Path -Path $ExePath)) {
+        throw "ExePath directory does not exist."
+    }
+    $XmlPolicyFileByPublisher = Join-Path -Path $XmlDestination -ChildPath "$($XMLFileRootName)_ByPublisher.xml"
+    $XmlPolicyFileByHash = Join-Path -Path $XmlDestination -ChildPath "$($XMLFileRootName)_ByHash.xml"
+    Write-Verbose "Retrieving AppLocker file information"
+    $AppLockerFileInformation = Get-AppLockerFileInformation -Directory $ExePath -FileType Exe -Recurse
+    Write-Verbose "$AppLockerFileInformation"
+    Write-Verbose "Generating file: $XmlPolicyFileByPublisher"
+    $AppLockerFileInformation | 
+        where Publisher -NE $null | 
+        New-AppLockerPolicy -RuleType Publisher -RuleNamePrefix PS_$env:USERNAME -User $User -Optimize -Xml -IgnoreMissingFileInformation |
+        Out-File -FilePath $XmlPolicyFileByPublisher -Encoding utf8 -Force
+    Write-Verbose "Generating file: $XmlPolicyFileByHash"
+    $AppLockerFileInformation | 
+        where Publisher -EQ $null |
+        New-AppLockerPolicy -RuleType Hash -RuleNamePrefix PS_$env:USERNAME -User $User -Optimize -Xml |
+        Out-File -FilePath $XmlPolicyFileByHash -Encoding utf8 -Force
+}
+
 function Invoke-GPUpdateOnComputersWithLocalAdmins {
     [CmdletBinding()]
     param ()

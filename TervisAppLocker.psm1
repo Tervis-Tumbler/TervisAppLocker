@@ -35,6 +35,19 @@ function Add-TervisAppLockerPolicyFromXMLFile {
     Set-AppLockerPolicy -XmlPolicy $Path -Ldap "LDAP://$DCHostName/$AppLockerPolicyDistinguishedName" -Merge -Verbose
 }
 
+function Get-TervisApplockerGPO {
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('Client','RdsServer')]
+        $GpoTarget
+    )
+    If ($GpoTarget -eq 'Client') {
+        Get-GPO -GUID "{F5D1AC24-EF4A-41BB-9D8C-81404B9869C7}"
+    } elseif ($GpoTarget -eq 'RdsServer') {
+        Get-GPO -GUID "{6A1C601A-65BD-4E76-94EE-84624C60CF3C}"
+    }
+}
+
 function New-TervisAppLockerPolicyXMLFileFromDirectory {
     [CmdletBinding()]
     param (
